@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Text Repeater</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0f13">
+  <style>
+    /* ============================
+       Combined styles
+       NOTE: comments inside code are in English per user preference.
+       ============================ */
+    /* ============================
+       update notes:
+       >optumized style
+       ============================ */
+
+    :root {
+      --clock-width: 420px;
+      --clock-height: 90px;
+      --clock-font: 26px;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 24px;
+      background: #fff;
+      margin: 0;
+    }
+
+    /* --- Rainbow shift + shine (shared) --- */
+    .rainbow-shining {
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 400% 400%;
+      animation: rainbowShift 6s linear infinite;
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+    }
+    .rainbow-shining::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -50%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(120deg, transparent, rgba(255,255,255,0.85), transparent);
+      animation: shine 3s infinite;
+      pointer-events: none;
+    }
+
+    @keyframes rainbowShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes shine {
+      0%   { left: -50%; }
+      50%  { left: 120%; }
+      100% { left: 120%; }
+    }
+
+  /* ===============================
+       Rainbow Glitch Title + Blink
+       =============================== */
+    .glitch {
+      position: relative;
+      font-size: 80px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #000;
+      animation: blinkBW 2s infinite;
+    }
+
+    /* Main Rainbow */
+    .glitch {
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 400% 400%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: rainbowShift 6s linear infinite, blinkBW 2s infinite;
+    }
+
+    .glitch::before,
+    .glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      color: #000;
+      background: #fff;
+      overflow: hidden;
+      clip: rect(0, 900px, 0, 0);
+    }
+
+    /* Glitch rainbow layers */
+    .glitch::before {
+      left: 2px;
+      text-shadow: -2px 0 red, 2px 0 orange, -2px 0 yellow, 2px 0 green,   -2px 0 blue, 2px 0 indigo, -2px 0 violet;
+      animation: glitch 2s infinite linear alternate-reverse;
+    }
+    .glitch::after {
+      left: -2px;
+      text-shadow: -2px 0 violet, 2px 0 indigo, -2px 0 blue, 2px 0 green,   -2px 0 yellow, 2px 0 orange, -2px 0 red;
+      animation: glitch 1.5s infinite linear alternate-reverse;
+    }
+
+    /* Glitch keyframes */
+    @keyframes glitch {
+      0%   { clip: rect(42px, 9999px, 44px, 0); }
+      20%  { clip: rect(12px, 9999px, 80px, 0); }
+      40%  { clip: rect(85px, 9999px, 140px, 0); }
+      60%  { clip: rect(24px, 9999px, 90px, 0); }
+      80%  { clip: rect(60px, 9999px, 130px, 0); }
+      100% { clip: rect(12px, 9999px, 100px, 0); }
+    }
+
+    /* Blink effect */
+    @keyframes blinkBW {
+      0%, 50%, 100% { color: #000; }
+      25%, 75%  { color: #fff; }
+    }
+
+    /* --- Clock styling (rainbow glow + shining) --- */
+    #clock {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: var(--clock-width);
+      height: var(--clock-height);
+      font-size: var(--clock-font);
+      font-weight: bold;
+      color: white;
+      border-radius: 60px;
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 400% 400%;
+      animation: rainbowShift 6s linear infinite, rainbowGlow 3s ease-in-out infinite alternate;
+      margin: 18px auto;
+      cursor: default;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      box-shadow: 0 0 15px rgba(255,255,255,0.6);
+      user-select: none;
+    }
+    #clock:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 38px rgba(255,255,255,0.95);
+    }
+    @keyframes rainbowGlow {
+      0% { box-shadow:0 0 10px red,0 0 20px orange,0 0 30px yellow,0 0 40px green,0 0 50px blue,0 0 60px indigo,0 0 70px violet; }
+      50% { box-shadow:0 0 15px orange,0 0 25px yellow,0 0 35px green,0 0 45px blue,0 0 55px indigo,0 0 65px violet,0 0 75px red; }
+      100% { box-shadow:0 0 10px yellow,0 0 20px green,0 0 30px blue,0 0 40px indigo,0 0 50px violet,0 0 60px red,0 0 70px orange; }
+    }
+
+    /* --- Buttons / inputs --- */
+    textarea, input[type="text"], input[type="number"], button, select {
+      margin: 8px 0;
+      padding: 10px;
+      font-size: 15px;
+      border: none;
+      border-radius: 8px;
+      box-sizing: border-box;
+      outline: none;
+    }
+    textarea.rainbow-shining,
+    input.rainbow-shining {
+      color: black;
+      -webkit-text-fill-color: black;
+    }
+    /* Buttons intentionally have no glow to match user request */
+    button.rainbow-shining {
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      color: white;
+      background: linear-gradient(180deg, #4b5563, #374151); /* muted gradient for buttons */
+      border-radius: 10px;
+      padding: 10px 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    button.rainbow-shining:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+
+    /* --- Progress bar --- */
+    #progressContainer {
+      width: 90%;
+      max-width: 700px;
+      margin: 8px auto;
+      background: #eee;
+      border-radius: 8px;
+      overflow: hidden;
+      display: none;
+    }
+    #progressBar {
+      height: 14px;
+      width: 0%;
+      transition: width 0.18s linear;
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 400% 400%;
+      animation: rainbowShift 6s linear infinite;
+    }
+
+    /* --- Floating/movable controls (sliders) --- */
+    .controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(20,20,20,0.85);
+      color: #eee;
+      padding: 12px;
+      border-radius: 8px;
+      width: 260px;
+      box-shadow: 0 6px 22px rgba(0,0,0,0.4);
+      font-size: 13px;
+      z-index: 1000;
+      backdrop-filter: blur(6px);
+      cursor: default;
+      user-select: none;
+      touch-action: none;
+    }
+    .controls.minimized { height: 36px; overflow: hidden; padding: 6px; width: 160px; }
+
+    /* --------- HEADER: updated layout --------- */
+    .controls-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between; /* left button / center text / right button */
+      cursor: grab;
+      padding: 2px 4px;
+      gap: 8px;
+    }
+    .controls-header .min-btn {
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      width: 36px;
+      height: 28px;
+      cursor: pointer;
+      font-weight: bold;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex: 0 0 36px;
+      padding:0;
+    }
+    .controls-header .controls-title {
+      flex: 1 1 auto;
+      text-align: center;
+      white-space: nowrap; /* keep in one line */
+      font-weight: 600;
+      color: #eee;
+      font-size: 14px;
+    }
+    /* ------------------------------------------ */
+
+    .controls h4 { margin:0 0 8px 0; font-size:14px; letter-spacing:0.6px; }
+    .control-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; }
+    .control-row label { min-width:48px; font-weight:600; color:#ddd; }
+    .control-row .range-wrap { flex:1; position:relative; display:flex; align-items:center; }
+
+    /* ===============================
+       Replaced Slider Styles & JS target (ONLY these were changed)
+       - Custom range styling with rainbow background and glossy shine
+       - Thumb (handle) styled for WebKit and Firefox
+       - Wrapper provides animated highlight
+       =============================== */
+
+    /* Range styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 400% 400%;
+      outline: none;
+      box-shadow: inset 0 0 14px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.12);
+      padding: 0;
+      margin: 0 8px 0 0;
+      position: relative;
+      z-index: 1;
+      animation: rainbowShift 6s linear infinite;
+    }
+    .control-row .range-wrap::after{
+      content:"";
+      position:absolute;
+      top:-6px;
+      left:-60%;
+      width:60%;
+      height:24px;
+      background: linear-gradient(120deg, transparent, rgba(255,255,255,0.9), transparent);
+      transform: skewX(-20deg);
+      filter: blur(6px);
+      animation: rangeShine 3s linear infinite;
+      pointer-events: none;
+      z-index: 2;
+      opacity: 0.95;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.75);
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(250,250,250,0.7));
+      box-shadow: 0 0 12px rgba(255,255,255,0.6), 0 2px 6px rgba(0,0,0,0.3);
+      cursor: pointer;
+      margin-top: -5px;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.75);
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(250,250,250,0.7));
+      box-shadow: 0 0 12px rgba(255,255,255,0.6), 0 2px 6px rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+
+    .ctrl-value { width:56px; text-align:right; font-family:monospace; color:#fff; background:rgba(255,255,255,0.04); padding:4px 6px; border-radius:4px; border:1px solid rgba(255,255,255,0.03); }
+    .ctrl-actions { display:flex; gap:8px; margin-top:10px; }
+    .button-reset, .button-copy { background:#2b2b2b; color:#fff; border:1px solid rgba(255,255,255,0.05); padding:6px 8px; border-radius:6px; cursor:pointer; font-size:13px; }
+    .button-reset:hover, .button-copy:hover { transform: translateY(-1px); }
+
+    @keyframes rangeShine {
+      0% { left:-60%; opacity:0; transform: skewX(-20deg) translateX(0); }
+      10% { opacity:0.9; }
+      50% { left:120%; opacity:0.9; transform: skewX(-20deg) translateX(0); }
+      100% { left:120%; opacity:0; transform: skewX(-20deg) translateX(0); }
+    }
+    /* Apply same rainbow glow as the clock to all panels */
+    .controls {
+      animation: rainbowShift 8s linear infinite;
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 400% 400%;
+      filter: brightness(1.1);
+      box-shadow: 0 0 20px rgba(255,255,255,0.2);
+      border: 2px solid transparent;
+      background-clip: padding-box;
+      position: absolute;
+    }
+
+    .controls::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      border-radius: inherit;
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 400% 400%;
+      animation: rainbowShift 8s linear infinite;
+      z-index: -1;
+      filter: blur(8px) brightness(1.2);
+      opacity: 0.7;
+    }
+    /* --- Popup / slot list / other styles kept from repeater --- */
+    #popupOverlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1200;
+      backdrop-filter: blur(6px);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    #popupOverlay.active {
+      display:flex; opacity:1;
+    }
+    #popupBox {
+      padding: 20px;
+      color: #111;
+      border-radius: 12px;
+      text-align: center;
+      width: 380px;
+      max-width: calc(100% - 40px);
+      position: relative;
+      opacity: 0;
+      transform: scale(0.95) translateY(6px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+    }
+    #popupOverlay.active #popupBox { opacity:1; transform:scale(1) translateY(0); }
+
+    /* Responsive tweaks */
+    @media (max-width:520px){
+      .glitch{ font-size:34px; }
+      #clock{ width:calc(100% - 60px); }
+      .controls{ width:220px; top:10px; right:10px; }
+    }
+    /* Apply unified rainbow animation to all control buttons except effect buttons */
+    .min-btn,
+    .button-reset,
+    .button-copy {
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 400% 400%;
+      color: #fff;
+      border: none;
+    border-radius: 6px;
+      animation: rainbowShift 6s linear infinite;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      font-weight: bold;
+      cursor: pointer;
+      text-shadow: 0 0 6px rgba(255,255,255,0.2);
+    }
+
+    .min-btn:hover,
+    .button-reset:hover,
+    .button-copy:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px rgba(255,255,255,0.3);
+    }
+    /* Utility layout */
+      .page-wrap { max-width: 980px; margin: 0 auto; padding-top: 18px; }
+      .controls-row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px; }
+      
+    /* --- Buttons with rainbow shining (no glow) --- */
+    button.rainbow-shining {
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 400% 400%;
+      animation: rainbowShift 6s linear infinite; /* moving gradient    (shine effect) */
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      transition: transform 0.18s ease;
+    }
+
+    /* Hover effect - slight lift but no glow */
+    button.rainbow-shining:hover {
+      transform: translateY(-2px);
+    }
+    /* === Popup buttons rainbow shining === */
+    #popupBox button {
+      background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size: 400% 400%;
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      animation: rainbowShift 6.5s linear infinite;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* Shine overlay effect */
+    #popupBox button::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -50%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(120deg, transparent, rgba(255,255,255,0.9), transparent);
+      animation: shine 3.5s infinite;
+    }
+
+    /* Hover lift */
+    #popupBox button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 12px rgba(255,255,255,0.3);
+    }
+    /* Gradient animation (shared with clock) */
+    @keyframes rainbowShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+  }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="glitch" data-text="Text Repeater">Text Repeater</div>
+
+    <!-- Repeater UI (kept as before) -->
+    <textarea id="textInput" rows="5" cols="40" placeholder="Enter your text..." class="rainbow-shining" style="width:90%; min-height:100px; overflow:auto;"></textarea><br>
+
+    <input type="number" id="repeatCount" placeholder="Repeat count" value="5" min="1" class="rainbow-shining" style="width:200px;"><br>
+    <input type="number" id="batchSizeInput" placeholder="Batch size" value="1000" min="1" class="rainbow-shining" style="width:200px;"><br>
+
+    <input type="text" id="separator" placeholder="Enter separator (default: '')" class="rainbow-shining" style="width:200px;"><br>
+
+    <div class="options" style="margin-bottom:8px;">
+      <label><input type="checkbox" id="sepLeft"> <span style="font-weight:600">Separator Left</span></label>
+      <label><input type="checkbox" id="sepRight"> <span style="font-weight:600">Separator Right</span></label>
+      <label><input type="checkbox" id="sepBoth"> <span style="font-weight:600">Separator Both</span></label>
+      <label><input type="checkbox" id="sepMiddle"> <span style="font-weight:600">Separator Middle</span></label>
+    </div>
+
+    <div class="options" style="margin-bottom:10px;">
+      <label><input type="checkbox" id="addSpace"> <span style="font-weight:600">Add Space</span></label>
+      <label><input type="checkbox" id="addIndex"> <span style="font-weight:600">Add Index</span></label>
+      <label><input type="checkbox" id="addNewLine"> <span style="font-weight:600">Add New Line</span></label>
+      <label><input type="checkbox" id="autoResizeToggle" checked> <span style="font-weight:600">Auto-Resize Output</span></label>
+      <label><input type="checkbox" id="brutalModeToggle"> <span style="font-weight:600">⚠ Brutal Mode ⚠</span></label>
+    </div>
+
+    <div class="controls-row">
+      <button id="generateBtn" class="rainbow-shining">Generate</button>
+      <button id="copyBtn" class="rainbow-shining">Copy</button>
+      <button id="clearBtn" class="rainbow-shining">Clear Output</button>
+      <button id="downloadBtn" class="rainbow-shining">Download .txt</button>
+      
+    <!-- Rainbow clock inserted above repeater -->
+    <div id="clock" role="status" aria-live="polite">--:--:--</div>
+
+      <button id="otherOptionsBtn" class="rainbow-shining">Other Options</button>
+      <button id="cancelBtn" class="rainbow-shining" style="display:none;">Cancel</button>
+    </div>
+
+    <div id="progressContainer">
+      <div id="progressBar"></div>
+    </div>
+
+    <textarea id="output" class="rainbow-shining" placeholder="Generated text will appear here..." style="min-height:200px; width:90%;"></textarea>
+
+    <!-- popup overlay -->
+    <div id="popupOverlay" aria-hidden="true">
+      <div id="popupBox" class="rainbow-shining"></div>
+    </div>
+  </div>
+  <!-- Movable & Minimizable ImGui-style Controls (sliders for the clock) -->
+  <div class="controls" id="controls" role="dialog" aria-label="Clock Controls" style="left:auto; top:20px; right:20px;">
+    <!-- UPDATED HEADER: left minimize button, centered title, right minimize button -->
+    <div class="controls-header" id="controlsHeader">
+      <button class="min-btn" id="minBtnLeft" aria-expanded="true" title="Minimize (left)">▼</button>
+      <div class="controls-title">Clock Size</div>
+      <button class="min-btn" id="minBtnRight" aria-expanded="true" title="Minimize (right)">▼</button>
+    </div>
+
+    <div class="controls-inner" id="controlsInner">
+      <div class="control-row">
+        <label for="widthSlider">W</label>
+        <div class="range-wrap"><input id="widthSlider" type="range" min="120" max="900" value="420" /></div>
+        <div id="widthVal" class="ctrl-value">420px</div>
+      </div>
+      <div class="control-row">
+        <label for="heightSlider">H</label>
+        <div class="range-wrap"><input id="heightSlider" type="range" min="40" max="300" value="90" /></div>
+        <div id="heightVal" class="ctrl-value">90px</div>
+      </div>
+      <div class="control-row">
+        <label for="fontSlider">F</label>
+        <div class="range-wrap"><input id="fontSlider" type="range" min="10" max="80" value="26" /></div>
+        <div id="fontVal" class="ctrl-value">26px</div>
+      </div>
+      <div class="ctrl-actions">
+        <button class="button-reset" id="resetBtn">Reset</button>
+        <button class="button-copy" id="copyCssBtn">Copy CSS</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+
+    /* click sound used on UI button presses */
+    async function playLoudClick(callback) {
+      const data = "UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQgAAAAA/////wAAAP///wAAAP///wAAAP///w==";
+      const binary = atob(data);
+      const buffer = new ArrayBuffer(binary.length);
+      const view = new Uint8Array(buffer);
+      for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
+
+      // Create audio context and decode the sound
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const decoded = await audioCtx.decodeAudioData(buffer);
+
+      // Create source and gain for volume control
+      const source = audioCtx.createBufferSource();
+      source.buffer = decoded;
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.value = 2000.0;
+
+      source.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      source.start(0);
+      if (callback) callback();
+    }
+
+    // Attach click sound to all buttons except the clock
+      document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("button:not(#clock)").forEach(btn => {
+        btn.addEventListener("click", () => playLoudClick());
+    });
+});
+
+    /* ============================
+       Clock + Slider behavior
+       Comments in English inside code as requested.
+       (This whole block was replaced to match index 6.5 slider JS)
+       ============================ */
+
+    // Clock update function
+    function updateClock(){
+      const now = new Date();
+      const h = now.getHours().toString().padStart(2,'0');
+      const m = now.getMinutes().toString().padStart(2,'0');
+      const s = now.getSeconds().toString().padStart(2,'0');
+      document.getElementById('clock').innerText = `${h}:${m}:${s}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Slider bindings
+    const widthSlider = document.getElementById('widthSlider');
+    const heightSlider = document.getElementById('heightSlider');
+    const fontSlider = document.getElementById('fontSlider');
+    const widthVal = document.getElementById('widthVal');
+    const heightVal = document.getElementById('heightVal');
+    const fontVal = document.getElementById('fontVal');
+    const root = document.documentElement;
+
+    function setClockWidth(px){ root.style.setProperty('--clock-width', px + 'px'); widthVal.textContent = px + 'px'; }
+    function setClockHeight(px){ root.style.setProperty('--clock-height', px + 'px'); heightVal.textContent = px + 'px'; }
+    function setClockFont(px){ root.style.setProperty('--clock-font', px + 'px'); fontVal.textContent = px + 'px'; }
+
+    setClockWidth(widthSlider.value);
+    setClockHeight(heightSlider.value);
+    setClockFont(fontSlider.value);
+
+    widthSlider.addEventListener('input', (e)=> setClockWidth(e.target.value));
+    heightSlider.addEventListener('input', (e)=> setClockHeight(e.target.value));
+    fontSlider.addEventListener('input', (e)=> setClockFont(e.target.value));
+
+    document.getElementById('resetBtn').addEventListener('click', ()=>{
+      const defaults = {w:420,h:90,f:26};
+      widthSlider.value = defaults.w; heightSlider.value = defaults.h; fontSlider.value = defaults.f;
+      setClockWidth(defaults.w); setClockHeight(defaults.h); setClockFont(defaults.f);
+    });
+
+    const copyBtn = document.getElementById('copyCssBtn');
+    copyBtn.addEventListener('click', ()=>{
+      const cssSnippet = `:root { --clock-width: ${widthSlider.value}px; --clock-height: ${heightSlider.value}px; --clock-font: ${fontSlider.value}px; }`;
+      navigator.clipboard.writeText(cssSnippet).then(()=>{
+        const prev = copyBtn.textContent;
+        copyBtn.textContent = 'Copied ✓';
+        setTimeout(()=> copyBtn.textContent = prev, 1500);
+      }).catch(()=> {
+        const fallback = prompt('Copy this CSS snippet:', cssSnippet);
+        if (fallback === null) {
+          alert('Copy canceled or blocked by the browser.');
+        }
+      });
+    });
+
+    /* ============================
+       Movable (draggable) controls (unchanged logic, kept from source)
+       ============================ */
+    const controls = document.getElementById('controls');
+    const header = document.getElementById('controlsHeader');
+    const inner = document.getElementById('controlsInner');
+    let dragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    function clamp(n, min, max){ return Math.max(min, Math.min(n, max)); }
+
+    header.addEventListener('pointerdown', (e)=>{
+      if (e.target.closest('button') || e.target.closest('input')) return;
+      dragging = true;
+      controls.style.right = 'auto';
+      const rect = controls.getBoundingClientRect();
+      dragOffsetX = e.clientX - rect.left;
+      dragOffsetY = e.clientY - rect.top;
+      controls.setPointerCapture && controls.setPointerCapture(e.pointerId);
+      header.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('pointermove', (e)=>{
+      if (!dragging) return;
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      let left = e.clientX - dragOffsetX;
+      let top = e.clientY - dragOffsetY;
+      left = clamp(left, 6, vw - controls.offsetWidth - 6);
+      top = clamp(top, 6, vh - controls.offsetHeight - 6);
+      controls.style.left = left + 'px';
+      controls.style.top = top + 'px';
+    });
+
+    document.addEventListener('pointerup', (e)=>{
+      if (!dragging) return;
+      dragging = false;
+      try { controls.releasePointerCapture && controls.releasePointerCapture(e.pointerId); } catch(e){}
+      header.style.cursor = 'grab';
+    });
+
+    /* Minimize / restore (updated to support left+right buttons and centered title) */
+    const minBtnLeft = document.getElementById('minBtnLeft');
+    const minBtnRight = document.getElementById('minBtnRight');
+    const controlsInner = document.getElementById('controlsInner');
+
+    function setMinimizedState(minimized) {
+      if (minimized) {
+        controls.classList.add('minimized');
+        controlsInner.style.display = 'none';
+        // left -> show "▶" (points to center), right -> show "◀"
+        minBtnLeft.textContent = '▶';
+        minBtnLeft.title = 'Restore (left)';
+        minBtnLeft.setAttribute('aria-expanded', 'false');
+        minBtnRight.textContent = '◀';
+        minBtnRight.title = 'Restore (right)';
+        minBtnRight.setAttribute('aria-expanded', 'false');
+      } else {
+        controls.classList.remove('minimized');
+        controlsInner.style.display = '';
+        // both show ▼ when expanded
+        minBtnLeft.textContent = '▼';
+        minBtnLeft.title = 'Minimize (left)';
+        minBtnLeft.setAttribute('aria-expanded', 'true');
+        minBtnRight.textContent = '▼';
+        minBtnRight.title = 'Minimize (right)';
+        minBtnRight.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    function toggleMinimize() {
+      const isMin = controls.classList.toggle('minimized');
+      setMinimizedState(isMin);
+    }
+
+    // attach both buttons to toggle
+    minBtnLeft.addEventListener('click', (e) => { e.stopPropagation(); toggleMinimize(); });
+    minBtnRight.addEventListener('click', (e) => { e.stopPropagation(); toggleMinimize(); });
+
+    // dblclick header toggles (same behavior)
+    header.addEventListener('dblclick', () => toggleMinimize());
+
+    // keyboard restore with Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && controls.classList.contains('minimized')) toggleMinimize();
+    });
+
+    // prevent dragging while interacting with inner controls
+    ['pointerdown','pointerup'].forEach(ev=> inner.addEventListener(ev, (e)=> e.stopPropagation()));
+
+    /* ============================
+       Rest of Text Repeater JS (kept from the provided base file)
+       ============================ */
+
+    // Hard caps
+    const MAX_COUNT   = Infinity;
+    const MAX_CHARS   = Infinity;
+
+    let BATCH_SIZE = 1000;
+    let cancelRequested = false;
+    let brutalMode = false;
+    let savedBatchSize = BATCH_SIZE;
+    const BATCH_LS_KEY = "batchSize";
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const savedBatch = localStorage.getItem(BATCH_LS_KEY);
+      if (savedBatch !== null) {
+        const batchInput = document.getElementById("batchSizeInput");
+        if (savedBatch === "Infinity") {
+          savedBatchSize = 1000;
+          BATCH_SIZE = Infinity;
+          brutalMode = true;
+          batchInput.type = "text";
+          batchInput.value = "Infinity";
+          batchInput.readOnly = true;
+          document.getElementById("brutalModeToggle").checked = true;
+        } else {
+          const parsed = parseInt(savedBatch, 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            BATCH_SIZE = parsed;
+            savedBatchSize = parsed;
+            batchInput.value = parsed;
+            batchInput.type = "number";
+            batchInput.readOnly = false;
+          }
+        }
+      }
+      // ensure auto-resize initial state
+      const output = document.getElementById("output");
+      if (document.getElementById("autoResizeToggle").checked) {
+        output.style.overflow = "hidden";
+        output.style.resize = "none";
+        output.style.height = output.scrollHeight + "px";
+      }
+    });
+
+    document.getElementById("batchSizeInput").addEventListener("input", function () {
+      const val = parseInt(this.value, 10);
+      if (!isNaN(val) && val > 0) {
+        BATCH_SIZE = val;
+        savedBatchSize = val;
+        localStorage.setItem(BATCH_LS_KEY, String(val));
+      }
+    });
+
+    function toggleBrutalMode(enable) {
+      brutalMode = !!enable;
+      const batchInput = document.getElementById("batchSizeInput");
+      if (brutalMode) {
+        savedBatchSize = parseInt(batchInput.value, 10) || savedBatchSize || 1000;
+        BATCH_SIZE = Infinity;
+        batchInput.type = "text";
+        batchInput.value = "Infinity";
+        batchInput.readOnly = true;
+        localStorage.setItem(BATCH_LS_KEY, "Infinity");
+        alert("⚠ Brutal Mode enabled! Batch size locked to Infinity.");
+      } else {
+        BATCH_SIZE = savedBatchSize || 1000;
+        batchInput.type = "number";
+        batchInput.readOnly = false;
+        batchInput.value = savedBatchSize;
+        localStorage.setItem(BATCH_LS_KEY, String(savedBatchSize));
+        alert("Brutal Mode disabled. Restored batch size: " + savedBatchSize);
+      }
+    }
+    document.getElementById("brutalModeToggle").addEventListener("change", function() {
+      toggleBrutalMode(this.checked);
+    });
+
+    function buildPart(i, text, separator, sepOpts, addSpace, addIndex, addNewLine) {
+      let part = "";
+      if (addIndex) part += i + ". ";
+      if (sepOpts.left || sepOpts.both) { part += separator; }
+      part += text;
+      if (sepOpts.right || sepOpts.both) { part += separator; }
+      if (addSpace) part += " ";
+      if (addNewLine) part += "\n";
+      return part;
+    }
+
+    function chunkedGenerate(opts) {
+      const { text, count, separator, sepOpts, addSpace, addIndex, addNewLine } = opts;
+      const outputEl = document.getElementById("output");
+      const progressContainer = document.getElementById("progressContainer");
+      const progressBar = document.getElementById("progressBar");
+      const cancelBtn = document.getElementById("cancelBtn");
+
+      cancelRequested = false;
+      progressContainer.style.display = "block";
+      cancelBtn.style.display = "inline-block";
+
+      outputEl.value = "";
+      autoResize(outputEl);
+
+      let i = 1;
+      function processBatch() {
+        if (cancelRequested) {
+          progressBar.style.width = "0%";
+          progressContainer.style.display = "none";
+          cancelBtn.style.display = "none";
+          alert("Generation canceled.");
+          return;
+        }
+        const effectiveBatch = (BATCH_SIZE === Infinity ? count : BATCH_SIZE);
+        const end = Math.min(i + effectiveBatch - 1, count);
+        let chunk = "";
+
+        for (let j = i; j <= end; j++) {
+          chunk += buildPart(j, text, separator, sepOpts, addSpace, addIndex, addNewLine);
+          if (sepOpts.middle && j < count && separator) chunk += separator;
+        }
+
+        outputEl.value += chunk;
+        progressBar.style.width = Math.floor((end / count) * 100) + "%";
+        autoResize(outputEl);
+
+        if (end < count) {
+          i = end + 1;
+          setTimeout(processBatch, 100);
+        } else {
+          progressBar.style.width = "100%";
+          setTimeout(() => {
+            progressContainer.style.display = "none";
+            cancelBtn.style.display = "none";
+            progressBar.style.width = "0%";
+          }, 300);
+          alert("Generation complete.");
+        }
+      }
+      setTimeout(processBatch, 100);
+    }
+
+    function syncGenerate(opts) {
+      const { text, count, separator, sepOpts, addSpace, addIndex, addNewLine } = opts;
+      let result = "";
+      for (let i = 1; i <= count; i++) {
+        result += buildPart(i, text, separator, sepOpts, addSpace, addIndex, addNewLine);
+        if (sepOpts.middle && i < count && separator) result += separator;
+      }
+      document.getElementById("output").value = result;
+      autoResize(document.getElementById("output"));
+    }
+
+    function generateTextHandler() {
+      const text = document.getElementById("textInput").value || "";
+      let count = parseInt(document.getElementById("repeatCount").value, 10) || 1;
+      const separator = document.getElementById("separator").value || "";
+      const sepOpts = {
+        left: document.getElementById("sepLeft").checked,
+        right: document.getElementById("sepRight").checked,
+        both: document.getElementById("sepBoth").checked,
+        middle: document.getElementById("sepMiddle").checked
+      };
+      const addSpace = document.getElementById("addSpace").checked;
+      const addIndex = document.getElementById("addIndex").checked;
+      const addNewLine = document.getElementById("addNewLine").checked;
+
+      if (count < 1) { alert("Count must be >= 1."); return; }
+      if (count > MAX_COUNT) { alert("Max count exceeded."); return; }
+
+      const estimated = (text.length) * count;
+      if (estimated > MAX_CHARS) {
+        alert("Too large, reduce text/count.");
+        return;
+      }
+
+      const opts = { text, count, separator, sepOpts, addSpace, addIndex, addNewLine };
+      if (count > 500 || brutalMode) chunkedGenerate(opts); else syncGenerate(opts);
+    }
+
+    function copyText() {
+      const out = document.getElementById("output").value;
+      if (!out.trim()) { alert("Nothing to copy."); return; }
+      navigator.clipboard.writeText(out).then(() => alert("Copied!"));
+    }
+    function clearOutput() {
+      document.getElementById("output").value = "";
+      autoResize(document.getElementById("output"));
+    }
+    function autoResize(el) {
+      if (!el) return;
+      if (document.getElementById("autoResizeToggle").checked) {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      }
+    }
+    // Sync auto-resize toggle behavior (from v4.5.2(4.9)
+    document.getElementById("autoResizeToggle").addEventListener("change", () => {
+    const output = document.getElementById("output");
+    const toggle = document.getElementById("autoResizeToggle");
+
+    if (toggle.checked) {
+      output.style.overflow = "hidden";
+      output.style.resize = "none";
+      autoResize(output);
+    } else {
+      output.style.overflow = "auto";
+      output.style.resize = "vertical";
+      output.style.height = "250px";
+    }
+    });
+    document.getElementById("cancelBtn").addEventListener("click", ()=> { cancelRequested = true; });
+    document.getElementById("generateBtn").addEventListener("click", generateTextHandler);
+    document.getElementById("copyBtn").addEventListener("click", copyText);
+    document.getElementById("clearBtn").addEventListener("click", clearOutput);
+
+    /* Popup system (kept) */
+    const popupOverlay = document.getElementById("popupOverlay");
+    const popupBox = document.getElementById("popupBox");
+
+    function openPopup(htmlContent) {
+      popupBox.innerHTML = htmlContent;
+      popupOverlay.classList.remove("fade-out");
+      popupOverlay.classList.add("active");
+      popupOverlay.style.display = "flex";
+      const first = popupBox.querySelector("input, select, button");
+      if (first) first.focus();
+    }
+    function closePopup() {
+      popupOverlay.classList.add("fade-out");
+      setTimeout(() => {
+        popupOverlay.classList.remove("active");
+        if (!popupOverlay.classList.contains("active")) popupOverlay.style.display = "none";
+      }, 420);
+    }
+
+    function showDownloadPopup() {
+      const html = `
+        <h2>Save File As</h2>
+        <input type="text" id="fileNameInput" placeholder="Enter filename (default: output)">
+        <div style="display:flex; gap:10px; justify-content:center; margin-top:8px;">
+          <button class="btn-primary" id="confirmDownload">Download</button>
+          <button class="btn-ghost" id="cancelPopup">Cancel</button>
+        </div>
+      `;
+      openPopup(html);
+      popupBox.querySelector("#cancelPopup").addEventListener("click", closePopup);
+      popupBox.querySelector("#confirmDownload").addEventListener("click", ()=>{
+        const name = popupBox.querySelector("#fileNameInput").value;
+        downloadText(name);
+        closePopup();
+      });
+    }
+    function downloadText(fileName) {
+      const out = document.getElementById("output").value;
+      if (!out.trim()) { alert("Nothing to download."); return; }
+      if (!fileName || !fileName.trim()) fileName = "output";
+      const blob = new Blob([out], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName + ".txt";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+    document.getElementById("downloadBtn").addEventListener("click", showDownloadPopup);
+    popupOverlay.addEventListener("click", (e) => { if (e.target === popupOverlay) closePopup(); });
+
+    /* Save/load slots (kept) */
+    const LS_KEY = "textRepeater_saves";
+    function loadAllSaves() {
+      try { const raw = localStorage.getItem(LS_KEY); if (!raw) return {}; return JSON.parse(raw) || {}; }
+      catch (e) { console.error("Failed to parse saves:", e); return {}; }
+    }
+    function saveAllSaves(map) { localStorage.setItem(LS_KEY, JSON.stringify(map)); }
+    function createDefaultSlotName(existingMap) { let i = 1; while (existingMap["slot " + i]) i++; return "slot " + i; }
+
+    function showOtherOptions() {
+      const html = `
+        <h2>Other Options</h2>
+        <div style="display:flex;gap:10px;justify-content:center;margin-bottom:12px;">
+          <button class="btn-primary" id="openSave">Save</button>
+          <button class="btn-ghost" id="openLoad">Load</button>
+        </div>
+        <div style="font-size:13px;color:#333">Save: store current project into a slot. Load: restore from a saved slot.</div>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">
+          <button class="btn-ghost" id="closeOther">Close</button>
+        </div>
+      `;
+      openPopup(html);
+      popupBox.querySelector("#openSave").addEventListener("click", showSaveSlotsPopup);
+      popupBox.querySelector("#openLoad").addEventListener("click", showLoadSlotsPopup);
+      popupBox.querySelector("#closeOther").addEventListener("click", closePopup);
+    }
+    document.getElementById("otherOptionsBtn").addEventListener("click", showOtherOptions);
+
+    function showSaveSlotsPopup() {
+      const saves = loadAllSaves();
+      const slotNames = Object.keys(saves);
+      const slotListHtml = slotNames.length ? slotNames.map(n => `
+        <div class="slot-item">
+          <div style="font-size:14px;">${escapeHtml(n)}</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-ghost" data-slot="${escapeHtml(n)}" data-action="overwrite">Overwrite</button>
+            <button class="btn-ghost" data-slot="${escapeHtml(n)}" data-action="delete">Delete</button>
+          </div>
+        </div>
+      `).join("") : `<div style="padding:8px;color:#666">No saved slots yet.</div>`;
+
+      const html = `
+        <h2>Save - Choose Slot</h2>
+        <div class="slot-list">${slotListHtml}</div>
+        <div style="margin-bottom:8px">
+          <input type="text" id="newSlotName" placeholder="New slot name (leave empty for auto)">
+          <button class="btn-primary" id="createSave">Create & Save</button>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button class="btn-ghost" id="closeSave">Close</button>
+        </div>
+      `;
+      openPopup(html);
+      popupBox.querySelectorAll("[data-action='overwrite']").forEach(btn=>{
+        btn.addEventListener("click", ()=> {
+          const slot = btn.getAttribute("data-slot");
+          if (!confirm("Overwrite slot \""+slot+"\"?")) return;
+          performSaveToSlot(slot);
+          showSaveSlotsPopup();
+        });
+      });
+      popupBox.querySelectorAll("[data-action='delete']").forEach(btn=>{
+        btn.addEventListener("click", ()=> {
+          const slot = btn.getAttribute("data-slot");
+          if (!confirm("Delete slot \""+slot+"\"?")) return;
+          const s = loadAllSaves();
+          delete s[slot];
+          saveAllSaves(s);
+          showSaveSlotsPopup();
+        });
+      });
+
+      popupBox.querySelector("#createSave").addEventListener("click", ()=> {
+        const nameInput = popupBox.querySelector("#newSlotName");
+        let name = (nameInput && nameInput.value && nameInput.value.trim()) || "";
+        const s = loadAllSaves();
+        if (!name) name = createDefaultSlotName(s);
+        if (s[name]) {
+          if (!confirm("Slot exists. Overwrite \""+name+"\"?")) return;
+        }
+        performSaveToSlot(name);
+        showSaveSlotsPopup();
+      });
+
+      popupBox.querySelector("#closeSave").addEventListener("click", closePopup);
+    }
+
+    function performSaveToSlot(slotName) {
+      const data = {
+        textInput: document.getElementById("textInput").value,
+        repeatCount: document.getElementById("repeatCount").value,
+        batchSize: (BATCH_SIZE === Infinity ? "Infinity" : String(BATCH_SIZE)),
+        separator: document.getElementById("separator").value,
+        sepLeft: document.getElementById("sepLeft").checked,
+        sepRight: document.getElementById("sepRight").checked,
+        sepBoth: document.getElementById("sepBoth").checked,
+        sepMiddle: document.getElementById("sepMiddle").checked,
+        addSpace: document.getElementById("addSpace").checked,
+        addIndex: document.getElementById("addIndex").checked,
+        addNewLine: document.getElementById("addNewLine").checked,
+        autoResizeToggle: document.getElementById("autoResizeToggle").checked,
+        brutalMode: brutalMode,
+        output: document.getElementById("output").value,
+        timestamp: Date.now()
+      };
+      const s = loadAllSaves();
+      s[slotName] = data;
+      saveAllSaves(s);
+      alert("Saved to slot: " + slotName);
+    }
+
+    function showLoadSlotsPopup() {
+      const saves = loadAllSaves();
+      const slotNames = Object.keys(saves);
+      if (!slotNames.length) { alert("No saved slots found."); return; }
+      const slotListHtml = slotNames.map(n => {
+        const ts = saves[n] && saves[n].timestamp ? new Date(saves[n].timestamp).toLocaleString() : "";
+        return `
+          <div class="slot-item">
+            <div style="font-size:14px;">
+              <div style="font-weight:600">${escapeHtml(n)}</div>
+              <div style="font-size:12px;color:#666">${escapeHtml(ts)}</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn-primary" data-slot="${escapeHtml(n)}" data-action="load">Load</button>
+            </div>
+          </div>`;
+      }).join("");
+
+      const html = `
+        <h2>Load - Choose Slot</h2>
+        <div class="slot-list">${slotListHtml}</div>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button class="btn-ghost" id="closeLoad">Close</button>
+        </div>
+      `;
+      openPopup(html);
+      popupBox.querySelectorAll("[data-action='load']").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const slot = btn.getAttribute("data-slot");
+          performLoadFromSlot(slot);
+          closePopup();
+        });
+      });
+      popupBox.querySelector("#closeLoad").addEventListener("click", closePopup);
+    }
+
+    function performLoadFromSlot(slotName) {
+      const s = loadAllSaves();
+      const data = s[slotName];
+      if (!data) { alert("No saved data in this slot."); return; }
+
+      document.getElementById("textInput").value = data.textInput || "";
+      document.getElementById("repeatCount").value = data.repeatCount || 1;
+
+      if (data.batchSize === "Infinity") {
+        document.getElementById("brutalModeToggle").checked = true;
+        toggleBrutalMode(true);
+        localStorage.setItem(BATCH_LS_KEY, "Infinity");
+      } else {
+        document.getElementById("brutalModeToggle").checked = false;
+        toggleBrutalMode(false);
+        const parsed = parseInt(data.batchSize,10);
+        if (!isNaN(parsed) && parsed > 0) {
+          document.getElementById("batchSizeInput").value = parsed;
+          BATCH_SIZE = parsed; savedBatchSize = parsed;
+          localStorage.setItem(BATCH_LS_KEY, String(parsed));
+        }
+      }
+
+      document.getElementById("separator").value = data.separator || "";
+      document.getElementById("sepLeft").checked = !!data.sepLeft;
+      document.getElementById("sepRight").checked = !!data.sepRight;
+      document.getElementById("sepBoth").checked = !!data.sepBoth;
+      document.getElementById("sepMiddle").checked = !!data.sepMiddle;
+      document.getElementById("addSpace").checked = !!data.addSpace;
+      document.getElementById("addIndex").checked = !!data.addIndex;
+      document.getElementById("addNewLine").checked = !!data.addNewLine;
+      document.getElementById("autoResizeToggle").checked = !!data.autoResizeToggle;
+      document.getElementById("output").value = data.output || "";
+
+      autoResize(document.getElementById("output"));
+      alert("Loaded slot: " + slotName);
+    }
+
+    function escapeHtml(str) {
+      return String(str || "").replace(/[&<>"']/g, function(m) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
+      });
+    }
+
+    document.getElementById("output").addEventListener("input", () => autoResize(document.getElementById("output")));
+    autoResize(document.getElementById("output"));
+
+    /* End of script */
+  </script>
+  <script>
+    /* =======================================================
+     FINAL MERGED VERSION — FIXED SIDE LAYOUT + BELOW LAYOUT
+     includes:
+     - fixed spacing for side mode
+     - customizable spacing
+     - improved grid template
+     - rainbow shine buttons
+     ======================================================= */
+
+    (function(){
+
+     /* =======================================================
+     CSS Injection (Improved layout)
+     ======================================================= */
+      const css = `
+      :root {
+      /* === CUSTOMIZABLE SIDE MODE === */
+      --side-gap: 9px;              /* jarak antar elemen */
+      --side-col-minus: 32px;       /* lebar tombol minus */
+      --side-col-plus: 32px;        /* lebar tombol plus */
+      --side-label-width: 50px;     /* lebar kolom label */
+
+      /* === BUTTON STYLE === */
+      --incdec-size: 24px;
+      --incdec-radius: 14px;
+      --incdec-font-size: 17px;
+      --incdec-bg-size: 400% 400%;
+    }
+
+    /* =======================================================
+     Rainbow Animation
+     ======================================================= */
+    @keyframes injectRainbowShift {
+      0% { background-position:0% 50%; }
+      50% { background-position:100% 50%; }
+      100% { background-position:0% 50%; }
+    }
+
+    /* =======================================================
+       Button Style
+       ======================================================= */
+    .incdec-btn{
+      width:var(--incdec-size);
+      height:var(--incdec-size);
+      min-width:var(--incdec-size);
+      min-height:var(--incdec-size);
+      border:none;
+      border-radius:var(--incdec-radius);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      font-size:var(--incdec-font-size);
+      font-weight:700;
+      color:white;
+      background:linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
+      background-size:var(--incdec-bg-size);
+      animation:injectRainbowShift 6s linear infinite;
+      transition:.15s ease;
+    }
+    .incdec-btn:hover{ transform:scale(1.10); }
+    .incdec-btn:active{ transform:scale(1.18); }
+    
+    /* =======================================================
+       SIDE LAYOUT (improved)
+       ======================================================= */
+    .incdec-row-side{
+      display:grid;
+      grid-template-columns:
+        var(--side-col-minus)
+        var(--side-label-width)
+        1fr
+        var(--side-col-plus);
+      gap:var(--side-gap);
+      align-items:center;
+      width:100%;
+    }
+    
+    /* =======================================================
+       BELOW LAYOUT (unchanged)
+       ======================================================= */
+    .incdec-col{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .incdec-row-below{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    
+    /* =======================================================
+       Mid wrapper — slider + value
+       ======================================================= */
+    .incdec-mid{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      width:100%;
+    }
+    .incdec-mid .range-wrap{
+      flex:1;
+    }
+    
+    /* Label */
+    .incdec-label{
+      color:white;
+      font-weight:700;
+      font-size:14px;
+    }
+    
+    /* Value */
+    .incdec-value{
+      min-width:58px;
+      text-align:right;
+      font-family:"JetBrains Mono", monospace;
+      color:white;
+    }
+    `;
+
+    if(!document.getElementById("incdec-style")){
+      const st=document.createElement("style");
+      st.id="incdec-style";
+      st.textContent=css;
+      document.head.appendChild(st);
+    }
+
+    /* =======================================================
+       Helpers
+       ======================================================= */
+    function $(id){ return document.getElementById(id); }
+    function makeBtn(sign){
+      const b=document.createElement("button");
+      b.className="incdec-btn";
+      b.textContent=sign;
+      return b;
+    }
+
+    /* =======================================================
+       Main Injection Function
+       ======================================================= */
+      function injectFor(sliderId,valueId,labelText,step=1,layout="side"){
+      
+      const slider=$(sliderId);
+      const value=$(valueId);
+      if(!slider || !value) return;
+    
+      const row = slider.closest(".control-row");
+      if(!row || row.dataset.incdecDone=="1") return;
+      row.dataset.incdecDone="1";
+    
+      const oldLabel=row.querySelector("label");
+      if(oldLabel) oldLabel.style.display="none";
+    
+      const minus=makeBtn("−");
+      const plus =makeBtn("+");
+    
+      const label=document.createElement("div");
+      label.className="incdec-label";
+      label.textContent=labelText;
+    
+      const wrap=slider.closest(".range-wrap");
+      const mid=document.createElement("div");
+      mid.className="incdec-mid";
+      mid.appendChild(wrap);
+      value.classList.add("incdec-value");
+      mid.appendChild(value);
+    
+      /* ===================================================
+           SIDE MODE (FIXED)
+         =================================================== */
+      if(layout==="side"){
+        const side=document.createElement("div");
+        side.className="incdec-row-side";
+    
+        side.appendChild(minus);
+        side.appendChild(label);
+        side.appendChild(mid);
+        side.appendChild(plus);
+    
+        row.innerHTML="";
+        row.appendChild(side);
+      }
+    
+      /* ===================================================
+           BELOW MODE (unchanged)
+         =================================================== */
+      else {
+        const col=document.createElement("div");
+        col.className="incdec-col";
+    
+        const t=document.createElement("div");
+        t.style.display="flex";
+        t.style.gap="8px";
+        t.style.alignItems="center";
+        t.appendChild(label);
+        t.appendChild(mid);
+    
+        const b=document.createElement("div");
+        b.className="incdec-row-below";
+        b.appendChild(minus);
+        b.appendChild(plus);
+    
+        col.appendChild(t);
+        col.appendChild(b);
+    
+        row.innerHTML="";
+        row.appendChild(col);
+      }
+    
+      /* ===================================================
+         Logic tombol + dan –
+         =================================================== */
+      function apply(d){
+        const size = parseFloat(slider.step || step);
+        slider.value = parseFloat(slider.value) + (size*d);
+        slider.dispatchEvent(new Event("input"));
+      }
+    
+      minus.onclick=()=>apply(-1);
+      plus.onclick =()=>apply(+1);
+    }
+
+    /* =======================================================
+       Apply to all sliders
+       ======================================================= */
+      const mode="below"; // you can switch to "side/below"
+        injectFor("masterInputGain","masterGainVal","Gain",0.5,mode);
+        injectFor("intensitySlider","intensityVal","Power",100,mode);
+    
+        injectFor("widthSlider","widthVal","W",10,mode);
+        injectFor("heightSlider","heightVal","H",5,mode);
+        injectFor("fontSlider","fontVal","F",1,mode);
+    
+    })();
+</script>
+<script>
+/* =========================================================
+   LEVEL 11 — STABLE STEALTH LOCK (WEBVIEW SAFE)
+   - Expiry hard lock
+   - Anti time rollback
+   - Anti clone (env fingerprint)
+   - WebView-safe input handling
+   - NO global UX break
+   ========================================================= */
+(function(){
+  'use strict';
+
+  /* =======================
+     CONFIG (EDIT ONLY HERE)
+     ======================= */
+  const CFG = {
+    exp_b64: "MTc5ODczNjQwMDAwMA==",
+    warn_days: 5,
+
+    update: {
+      latest: "v11.0.0",
+      notes: [
+        "WebView safe guard",
+        "Stealth stability upgrade",
+        "Improved in-app behavior"
+      ]
+    },
+
+    degrade_level: 2,
+    checksum_seed: "TXRPT-L11-Σ"
+  };
+
+  /* =======================
+     INTERNAL CORE
+     ======================= */
+  const _now = () => Date.now();
+  const _atob = s => atob(s);
+  const _msDay = 86400000;
+  const EXP = parseInt(_atob(CFG.exp_b64),10);
+
+  /* =======================
+     OBFUSCATION
+     ======================= */
+  const _mask = n => (n * 7) ^ 0x55;
+
+  /* =======================
+     CHECKSUM
+     ======================= */
+  function checksum(str){
+    let h = 2166136261;
+    for(let i=0;i<str.length;i++){
+      h ^= str.charCodeAt(i);
+      h += (h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24);
+    }
+    return (h>>>0).toString(16);
+  }
+
+  /* =======================
+     ENV FINGERPRINT
+     ======================= */
+  function fingerprint(){
+    return checksum([
+      navigator.userAgent,
+      screen.width,
+      screen.height,
+      navigator.language,
+      Intl.DateTimeFormat().resolvedOptions().timeZone
+    ].join("|"));
+  }
+
+  /* =======================
+     STATE STORAGE (L11)
+     ======================= */
+  const STORE = {
+    sig: "__L11_SIG__",
+    time: "__L11_TIME__",
+    env: "__L11_ENV__"
+  };
+
+  let TAMPERED = false;
+
+  try{
+    const scripts = document.getElementsByTagName('script');
+    const self = scripts[scripts.length-1].textContent || "";
+    const sig = checksum(self + CFG.checksum_seed);
+    const env = fingerprint();
+
+    const oldSig = localStorage.getItem(STORE.sig);
+    const oldEnv = localStorage.getItem(STORE.env);
+    const lastTime = parseInt(localStorage.getItem(STORE.time)||"0",10);
+
+    if(!oldSig){
+      localStorage.setItem(STORE.sig, sig);
+      localStorage.setItem(STORE.env, env);
+      localStorage.setItem(STORE.time, _now());
+    }else{
+      if(oldSig !== sig) TAMPERED = true;
+      if(oldEnv !== env) TAMPERED = true;
+      if(_now() < lastTime) TAMPERED = true;
+      localStorage.setItem(STORE.time, _now());
+    }
+  }catch(e){
+    TAMPERED = true;
+  }
+
+  /* =======================
+     TIME CHECK
+     ======================= */
+  const EXPIRED = _now() > EXP;
+  const DAYS_LEFT_RAW = Math.ceil((EXP - _now()) / _msDay);
+
+  /* =======================
+     WEBVIEW DETECTION
+     ======================= */
+  const __IS_WEBVIEW__ = (() => {
+    try {
+      return /wv|WebView|Android/i.test(navigator.userAgent||"");
+    } catch(e){ return false; }
+  })();
+
+  function __isTextInput(el){
+    if(!el) return false;
+    if(el.tagName === "TEXTAREA") return true;
+    if(el.tagName === "INPUT"){
+      const t = (el.type||"").toLowerCase();
+      return ["text","search","email","number"].includes(t);
+    }
+    return false;
+  }
+
+  /* =======================
+     DEGRADE (SAFE)
+     ======================= */
+  function degrade(level){
+    const factor = level === 1 ? 0.6 : level === 2 ? 0.3 : 0;
+    document.addEventListener('input', e=>{
+      const el = e.target;
+      if(__IS_WEBVIEW__ && __isTextInput(el)) return;
+      if(el && el.type === 'range'){
+        el.value *= factor;
+        el.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+    }, true);
+  }
+
+  /* =======================
+     HARD LOCK (SAFE)
+     ======================= */
+  function hardLock(){
+    document.addEventListener('input', e=>{
+      if(__IS_WEBVIEW__ && __isTextInput(e.target)) return;
+      e.stopImmediatePropagation();
+    }, true);
+
+    document.addEventListener('keydown', e=>{
+      if(__IS_WEBVIEW__ && __isTextInput(e.target)) return;
+      e.preventDefault();
+    }, true);
+
+    console.warn("LOCKED — Update required:", CFG.update.latest);
+  }
+
+  /* =======================
+     EXECUTION
+     ======================= */
+  if(TAMPERED){
+    hardLock();
+    return;
+  }
+
+  if(EXPIRED){
+    if(CFG.degrade_level >= 3) hardLock();
+    else degrade(CFG.degrade_level);
+    alert("This version has expired.\nPlease update to "+CFG.update.latest);
+    return;
+  }
+
+  /* =======================
+     PUBLIC INFO
+     ======================= */
+  Object.defineProperty(window,"__L11_INFO__",{
+    value:Object.freeze({
+      d:_mask(DAYS_LEFT_RAW),
+      v:CFG.update.latest
+    }),
+    writable:false
+  });
+
+  console.log("%cLEVEL 11 OK","color:#0f0");
+})();
+</script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('Service Worker registered:', reg))
+          .catch(err => console.log('Service Worker failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
