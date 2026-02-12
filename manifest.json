@@ -1,10 +1,19 @@
 {
-  "name": "Universal HTML App",
-  "short_name": "HTMLApp",
+  "name": "Text Repeater App",
+  "short_name": "Text Repeater",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0b0f13",
   "theme_color": "#0b0f13",
   "orientation": "portrait",
-  "icons": []
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "lang": "en",
+  "dir": "ltr"
 }
