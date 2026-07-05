@@ -4406,128 +4406,378 @@
 (() => {
   'use strict';
 
-  window.FEATURES_UNLOCKED = false;
+  const KEYGATE_VERSION = 'v4';
+  const STORAGE_PREFIX = `startup_keygate_${KEYGATE_VERSION}`;
+  const MAX_ATTEMPTS = 4;
+  const BASE_LOCK_MS = 30_000;
+  const MAX_LOCK_MS = 15 * 60_000;
+  const JITTER_MS = 5_000;
+  const SALT = 'startup-keygate-salt-v4';
 
-  class _0xA7C19 {
-    static _MASTER_HASHES = new Set([
-  "d8398f1121b85e3563427332be20e0ec6c24c951da1fa5cb384a750acb84ae60",
-  "44080876bfe39d52d5088884b9dc9c5bd13f1e503494d935dbf3c2331ce3e2ed",
-  "eb926ddeac11dbe86baf6a458b944ff8dd7f8bffe6e6cb0065dcfadec9440477",
-  "8b2bd1417dc325c68db6e92b29e180d66bc6e0ab6e915bc3b6ec6170301e9fd0",
-  "8113521dc64cd4a440e9bdd9a887f3e315aab7364945d678a71014d486a0b839",
-  "9e97b49f42769f6b3d98da66ce13c2eef02361b235dda7c29868032acbe33462",
-  "e75815289fdc7eb6a56cdc4c2ad5c5d9fdc9f8fa46d844c43f206ee1ea706738",
-  "980975227a036ceaeb2186593ed4cdacc649cb5562dfe19c2c77aa6560d3edd2",
-  "8c256aa359e3fc7e0dc2f37d249c834381b9d897ae8483e2058cfbe524ffa427"
-]);
+  const MASTER_HASHES = new Set([
+    'd8398f1121b85e3563427332be20e0ec6c24c951da1fa5cb384a750acb84ae60',
+    '44080876bfe39d52d5088884b9dc9c5bd13f1e503494d935dbf3c2331ce3e2ed',
+    'eb926ddeac11dbe86baf6a458b944ff8dd7f8bffe6e6cb0065dcfadec9440477',
+    '8b2bd1417dc325c68db6e92b29e180d66bc6e0ab6e915bc3b6ec6170301e9fd0',
+    '8113521dc64cd4a440e9bdd9a887f3e315aab7364945d678a71014d486a0b839',
+    '9e97b49f42769f6b3d98da66ce13c2eef02361b235dda7c29868032acbe33462',
+    'e75815289fdc7eb6a56cdc4c2ad5c5d9fdc9f8fa46d844c43f206ee1ea706738',
+    '980975227a036ceaeb2186593ed4cdacc649cb5562dfe19c2c77aa6560d3edd2',
+    '8c256aa359e3fc7e0dc2f37d249c834381b9d897ae8483e2058cfbe524ffa427'
+  ]);
 
-    static _n(s) {
-      return String(s ?? '').replace(/\s+/g, '');
+  // Optional device-bound hashes.
+  // If empty, device binding is disabled.
+  const DEVICE_HASHES = new Set([
+    // Add your device-bound SHA-256 hashes here if needed.
+  ]);
+
+  let internalUnlocked = false;
+  let gateFrozen = false;
+
+  Object.defineProperty(window, 'FEATURES_UNLOCKED', {
+    configurable: false,
+    enumerable: true,
+    get() {
+      return internalUnlocked;
     }
+  });
 
-    static async _sha256(text) {
-      const bytes = new TextEncoder().encode(text);
-      const hash = await crypto.subtle.digest('SHA-256', bytes);
-      return Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, '0')).join('');
+  const el = {
+    gate: () => document.getElementById('startupKeyGate'),
+    input: () => document.getElementById('startupKeyInput'),
+    status: () => document.getElementById('startupKeyStatus'),
+    unlockBtn: () => document.getElementById('startupUnlockBtn'),
+    pasteBtn: () => document.getElementById('startupPasteBtn')
+  };
+
+  const store = {
+    attempts: `${STORAGE_PREFIX}_attempts`,
+    lockUntil: `${STORAGE_PREFIX}_lock_until`,
+    nonce: `${STORAGE_PREFIX}_nonce`
+  };
+
+  function now() {
+    return Date.now();
+  }
+
+  function safeSessionGet(key) {
+    try {
+      return sessionStorage.getItem(key);
+    } catch {
+      return null;
     }
+  }
 
-    static async verify(entered) {
-      const candidate = _0xA7C19._n(entered);
-      if (!candidate) return false;
-      const digest = await _0xA7C19._sha256(candidate);
-      for (const h of _0xA7C19._MASTER_HASHES) {
-        if (digest === h) return true;
+  function safeSessionSet(key, value) {
+    try {
+      sessionStorage.setItem(key, value);
+    } catch {
+      // Fail closed without throwing.
+    }
+  }
+
+  function safeSessionRemove(key) {
+    try {
+      sessionStorage.removeItem(key);
+    } catch {
+      // Ignore.
+    }
+  }
+
+  function normalizeKey(value) {
+    return String(value ?? '')
+      .normalize('NFKC')
+      .replace(/[\s\u200B-\u200D\uFEFF]+/g, '')
+      .trim();
+  }
+
+  async function sha256(text) {
+    if (!globalThis.crypto?.subtle) {
+      throw new Error('Web Crypto API is unavailable.');
+    }
+    const bytes = new TextEncoder().encode(text);
+    const hash = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function timingSafeEqual(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) {
+      diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return diff === 0;
+  }
+
+  function readAttempts() {
+    const raw = safeSessionGet(store.attempts);
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function writeAttempts(n) {
+    safeSessionSet(store.attempts, String(Math.max(0, n | 0)));
+  }
+
+  function readLockUntil() {
+    const raw = safeSessionGet(store.lockUntil);
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function writeLockUntil(ts) {
+    safeSessionSet(store.lockUntil, String(Math.max(0, ts | 0)));
+  }
+
+  function clearSecurityState() {
+    safeSessionRemove(store.attempts);
+    safeSessionRemove(store.lockUntil);
+  }
+
+  function setStatus(message, type = '') {
+    const node = el.status();
+    if (!node) return;
+    node.textContent = message;
+    node.className = `gate-status ${type}`.trim();
+  }
+
+  function setUiLocked(locked) {
+    document.documentElement.classList.toggle('features-locked', locked);
+    document.body.classList.toggle('features-locked', locked);
+  }
+
+  function setControlsDisabled(disabled) {
+    const btn = el.unlockBtn();
+    const input = el.input();
+    const paste = el.pasteBtn();
+
+    if (btn) btn.disabled = disabled;
+    if (input) input.disabled = disabled;
+    if (paste) paste.disabled = disabled;
+  }
+
+  function hideGate() {
+    const node = el.gate();
+    if (node) node.classList.add('hidden');
+  }
+
+  function showGate() {
+    const node = el.gate();
+    if (node) node.classList.remove('hidden');
+  }
+
+  function freezeGateLayout() {
+    if (gateFrozen) return;
+    gateFrozen = true;
+
+    const node = el.gate();
+    if (!node) return;
+
+    node.setAttribute('aria-hidden', 'false');
+    node.style.pointerEvents = 'auto';
+  }
+
+  function getFingerprint() {
+    const nav = navigator || {};
+    const scr = screen || {};
+
+    return [
+      nav.userAgent || 'unknown',
+      nav.language || 'unknown',
+      nav.platform || 'unknown',
+      nav.vendor || 'unknown',
+      String(nav.hardwareConcurrency || '0'),
+      String(nav.deviceMemory || '0'),
+      String(nav.maxTouchPoints || '0'),
+      `${scr.width || 0}x${scr.height || 0}`,
+      String(globalThis.devicePixelRatio || 1),
+      Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown'
+    ].join('|');
+  }
+
+  async function computeKeyDigest(candidate) {
+    return sha256(`${normalizeKey(candidate)}`);
+  }
+
+  async function computeDeviceDigest(candidate) {
+    return sha256(`${normalizeKey(candidate)}|${getFingerprint()}|${SALT}`);
+  }
+
+  async function verifyKey(entered) {
+    const candidate = normalizeKey(entered);
+    if (!candidate) return false;
+
+    const digest = await computeKeyDigest(candidate);
+
+    for (const hash of MASTER_HASHES) {
+      if (timingSafeEqual(digest, hash)) {
+        return true;
       }
-      return false;
     }
+
+    if (DEVICE_HASHES.size > 0) {
+      const deviceDigest = await computeDeviceDigest(candidate);
+      for (const hash of DEVICE_HASHES) {
+        if (timingSafeEqual(deviceDigest, hash)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
-  const storageKey = 'startup_keygate_unlocked_v1';
-  const gate = () => document.getElementById('startupKeyGate');
-  const input = () => document.getElementById('startupKeyInput');
-  const status = () => document.getElementById('startupKeyStatus');
-  const unlockBtn = () => document.getElementById('startupUnlockBtn');
-  const pasteBtn = () => document.getElementById('startupPasteBtn');
-
-  function showStatus(message, type) {
-    const el = status();
-    if (!el) return;
-    el.textContent = message;
-    el.className = `gate-status ${type || ''}`.trim();
+  function nextLockDuration(attempts) {
+    const exponent = Math.max(0, attempts - MAX_ATTEMPTS);
+    const base = Math.min(MAX_LOCK_MS, BASE_LOCK_MS * Math.pow(2, exponent));
+    const jitter = Math.floor(Math.random() * JITTER_MS);
+    return Math.min(MAX_LOCK_MS, base + jitter);
   }
 
-  function lockUI() {
-    document.documentElement.classList.add('features-locked');
-    document.body.classList.add('features-locked');
+  function beginLockout(attempts) {
+    const duration = nextLockDuration(attempts);
+    const until = now() + duration;
+    writeLockUntil(until);
+    setControlsDisabled(true);
+    tickLockout();
   }
 
-  function unlockUI() {
-    document.documentElement.classList.remove('features-locked');
-    document.body.classList.remove('features-locked');
-    const el = gate();
-    if (el) el.classList.add('hidden');
+  function tickLockout() {
+    const until = readLockUntil();
+
+    if (!until || until <= now()) {
+      clearSecurityState();
+      setControlsDisabled(false);
+      setStatus('Enter your key to continue.', '');
+      return;
+    }
+
+    const remaining = Math.ceil((until - now()) / 1000);
+    setControlsDisabled(true);
+    setStatus(`Too many attempts. Locked for ${remaining} seconds.`, 'error');
+    setTimeout(tickLockout, 1000);
+  }
+
+  function hardLock(message) {
+    internalUnlocked = false;
+    setUiLocked(true);
+    showGate();
+    setStatus(message || 'Access denied.', 'error');
+    setControlsDisabled(false);
+  }
+
+  function softUnlock() {
+    internalUnlocked = true;
+    setUiLocked(false);
+    hideGate();
+    clearSecurityState();
+    setStatus('Access granted.', 'ok');
   }
 
   async function startup_login() {
-    const field = input();
-    const entered = field ? field.value : '';
-    const btn = unlockBtn();
+    const input = el.input();
+    const btn = el.unlockBtn();
+    const entered = input ? input.value : '';
+
+    if (readLockUntil() > now()) {
+      tickLockout();
+      return;
+    }
 
     if (btn) btn.disabled = true;
-    showStatus('Checking key...', '');
+    setStatus('Verifying key...', '');
 
     try {
-      const ok = await _0xA7C19.verify(entered);
+      const ok = await verifyKey(entered);
+
       if (ok) {
-        window.FEATURES_UNLOCKED = true;
-        localStorage.setItem(storageKey, '1');
-        showStatus('LOGIN => OK', 'ok');
-        setTimeout(unlockUI, 250);
+        softUnlock();
       } else {
-        window.FEATURES_UNLOCKED = false;
-        localStorage.removeItem(storageKey);
-        showStatus('LOGIN => FAILED', 'error');
+        internalUnlocked = false;
+        const attempts = readAttempts() + 1;
+        writeAttempts(attempts);
+
+        if (attempts >= MAX_ATTEMPTS) {
+          setStatus('Too many failed attempts. Lockout activated.', 'error');
+          beginLockout(attempts);
+        } else {
+          const left = MAX_ATTEMPTS - attempts;
+          setStatus(`Invalid key. Attempts left: ${left}`, 'error');
+          setControlsDisabled(false);
+        }
       }
     } catch (err) {
       console.error('Key gate error:', err);
-      showStatus('LOGIN => FAILED', 'error');
+      hardLock('Verification failed.');
     } finally {
-      if (btn) btn.disabled = false;
-      if (field) field.select();
+      if (input) input.select?.();
+      if (btn && !btn.disabled) btn.disabled = false;
     }
   }
 
-  function bindGate() {
-    const field = input();
-    const btn = unlockBtn();
-    const pb = pasteBtn();
-    if (field) {
-      field.addEventListener('keydown', (e) => {
+  function bindEvents() {
+    const input = el.input();
+    const btn = el.unlockBtn();
+    const paste = el.pasteBtn();
+
+    if (input) {
+      input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
           startup_login();
         }
       });
-      field.focus({ preventScroll: true });
+
+      input.addEventListener('paste', () => {
+        // Intentionally allowed, but still checked normally.
+      });
+
+      input.focus({ preventScroll: true });
     }
-    if (btn) btn.addEventListener('click', startup_login);
-    if (pb) pb.addEventListener('click', async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        if (field) field.value = text;
-        if (field) field.focus();
-        showStatus('Pasted from clipboard.', '');
-      } catch (e) {
-        showStatus('Clipboard access denied.', 'error');
+
+    if (btn) {
+      btn.addEventListener('click', startup_login);
+    }
+
+    if (paste) {
+      paste.addEventListener('click', async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          if (input) input.value = text;
+          if (input) input.focus({ preventScroll: true });
+          setStatus('Clipboard content loaded.', '');
+        } catch {
+          setStatus('Clipboard access denied.', 'error');
+        }
+      });
+    }
+  }
+
+  function preventUnlockedBypass() {
+    const gateNode = el.gate();
+    if (!gateNode) return;
+
+    const observer = new MutationObserver(() => {
+      if (!internalUnlocked && gateNode.classList.contains('hidden')) {
+        gateNode.classList.remove('hidden');
       }
     });
+
+    observer.observe(gateNode, { attributes: true, attributeFilter: ['class', 'style'] });
   }
 
   function initGate() {
-    lockUI();
-    bindGate();
-    if (localStorage.getItem(storageKey) === '1') {
-      showStatus('Checking saved key...', '');
+    freezeGateLayout();
+    setUiLocked(true);
+    showGate();
+    bindEvents();
+    preventUnlockedBypass();
+
+    if (readLockUntil() > now()) {
+      tickLockout();
+    } else {
+      setStatus('Enter your key to continue.', '');
     }
   }
 
